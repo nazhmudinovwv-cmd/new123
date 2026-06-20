@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1565C0">
+  <title>ТБО Мониторинг</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ═══════════════════ LOGIN ═══════════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">🚛</div>
+      <h1>ТБО Мониторинг</h1>
+      <p>Система мониторинга · г. Рудный</p>
+    </div>
+    <div class="form-group">
+      <label>Логин</label>
+      <input id="login-username" type="text" placeholder="Введите логин" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input id="login-password" type="password" placeholder="Введите пароль" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary btn-full" id="btn-login">Войти в систему</button>
+    <div id="login-error" class="error-msg">Неверный логин или пароль</div>
+    <div class="demo-hint">
+      <strong>Демо-доступ:</strong>
+      <table>
+        <tr><td>Администратор:</td><td>admin / admin</td></tr>
+        <tr><td>Диспетчер:</td><td>dispatcher / 1234</td></tr>
+        <tr><td>Руководитель:</td><td>manager / 1234</td></tr>
+        <tr><td>Водитель 1:</td><td>driver1 / 1234</td></tr>
+        <tr><td>Водитель 2:</td><td>driver2 / 1234</td></tr>
+        <tr><td>Водитель 3:</td><td>driver3 / 1234</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ DRIVER ═══════════════════ -->
+<div id="screen-driver" class="screen">
+  <header class="app-header">
+    <span class="header-logo">🚛</span>
+    <div style="flex:1">
+      <h2 id="driver-header-title">Мои наряды</h2>
+      <div class="header-sub" id="driver-header-sub">ТБО Мониторинг</div>
+    </div>
+    <div class="header-user">
+      <div class="avatar" id="driver-avatar">А</div>
+    </div>
+  </header>
+
+  <div class="gps-bar">
+    <div class="gps-dot" id="gps-dot"></div>
+    <span id="gps-status">GPS: определение...</span>
+    <span style="margin-left:auto; font-size:11px" id="gps-coords"></span>
+  </div>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="driver-orders" data-screen="driver">
+      <span class="tab-icon">📋</span>Наряды
+    </button>
+    <button class="tab-btn" data-tab="driver-active" data-screen="driver">
+      <span class="tab-icon">▶️</span>Активный
+    </button>
+    <button class="tab-btn" data-tab="driver-map" data-screen="driver">
+      <span class="tab-icon">🗺️</span>Карта
+    </button>
+    <button class="tab-btn" data-tab="driver-logout" data-screen="driver">
+      <span class="tab-icon">🚪</span>Выход
+    </button>
+  </nav>
+
+  <!-- Tab: Orders list -->
+  <div class="tab-content active" id="tab-driver-orders">
+    <div class="content-area" id="driver-orders-list">
+      <div class="empty-state"><div class="empty-icon">📋</div><p>Нет назначенных нарядов</p></div>
+    </div>
+  </div>
+
+  <!-- Tab: Active order -->
+  <div class="tab-content" id="tab-driver-active">
+    <div id="driver-no-active" class="empty-state" style="padding:40px 20px">
+      <div class="empty-icon">✅</div>
+      <p>Нет активного наряда.<br>Выберите наряд в списке.</p>
+    </div>
+    <div id="driver-active-content" style="display:none">
+      <div style="padding:16px 16px 0">
+        <div class="active-site-panel" id="active-site-panel">
+          <h3 id="active-site-name">—</h3>
+          <p id="active-site-addr">—</p>
+          <div class="action-btns">
+            <button class="btn btn-success btn-sm" id="btn-arrive">📍 Прибыл на объект</button>
+            <button class="btn btn-outline btn-sm" id="btn-complete-site" style="color:#fff;border-color:#fff" disabled>✅ Выполнено</button>
+            <button class="btn btn-sm" id="btn-skip-site" style="background:rgba(255,255,255,0.2);color:#fff">⏭ Пропустить</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-area" style="padding-top:0">
+        <div class="card">
+          <div class="card-header"><h3 id="active-order-title">Наряд #—</h3><span class="badge" id="active-order-badge">—</span></div>
+          <div class="site-list" id="active-sites-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>📸 Фотофиксация</h3></div>
+          <div class="card-body">
+            <div class="photo-section">
+              <div class="photo-row">
+                <div class="photo-slot" id="slot-before">
+                  <div class="photo-icon">📷</div>
+                  <div class="photo-label">ДО уборки</div>
+                  <input type="file" accept="image/*" capture="environment" id="photo-before" onchange="App.handlePhoto('before', this)">
+                </div>
+                <div class="photo-slot" id="slot-after">
+                  <div class="photo-icon">📷</div>
+                  <div class="photo-label">ПОСЛЕ уборки</div>
+                  <input type="file" accept="image/*" capture="environment" id="photo-after" onchange="App.handlePhoto('after', this)">
+                </div>
+              </div>
+              <p style="font-size:11px;color:var(--text-muted)">📌 Фото делается с текущими координатами и временем. Загрузка из галереи запрещена.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Map -->
+  <div class="tab-content" id="tab-driver-map">
+    <div class="map-wrap">
+      <div id="driver-route-map" style="height:100%;min-height:calc(100vh - 180px)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ DISPATCHER ═══════════════════ -->
+<div id="screen-dispatcher" class="screen">
+  <header class="app-header">
+    <span class="header-logo">🖥️</span>
+    <div style="flex:1">
+      <h2>Диспетчерская панель</h2>
+      <div class="header-sub">Система мониторинга · г. Рудный</div>
+    </div>
+    <div class="header-user">
+      <div class="avatar" id="dispatcher-avatar">Д</div>
+      <span class="user-name" id="dispatcher-username">Диспетчер</span>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="disp-map" data-screen="dispatcher">
+      <span class="tab-icon">🗺️</span>Карта
+    </button>
+    <button class="tab-btn" data-tab="disp-orders" data-screen="dispatcher">
+      <span class="tab-icon">📋</span>Наряды
+    </button>
+    <button class="tab-btn" data-tab="disp-create" data-screen="dispatcher">
+      <span class="tab-icon">➕</span>Создать
+    </button>
+    <button class="tab-btn" data-tab="disp-violations" data-screen="dispatcher">
+      <span class="tab-icon">⚠️</span>Нарушения
+    </button>
+    <button class="tab-btn" data-tab="disp-gps" data-screen="dispatcher">
+      <span class="tab-icon">📡</span>GPS
+    </button>
+    <button class="tab-btn" data-tab="disp-admin-open" data-screen="dispatcher">
+      <span class="tab-icon">⚙️</span>Управление
+    </button>
+    <button class="tab-btn" data-tab="disp-logout" data-screen="dispatcher">
+      <span class="tab-icon">🚪</span>Выход
+    </button>
+  </nav>
+
+  <!-- Tab: Live Map -->
+  <div class="tab-content active" id="tab-disp-map" style="position:relative">
+    <div class="map-wrap" style="flex:1">
+      <div id="dispatcher-map" style="height:100%;min-height:calc(100vh - 180px)"></div>
+    </div>
+    <div class="map-sidebar">
+      <div class="map-legend">
+        <h4>🗂 Легенда</h4>
+        <div class="legend-item"><div class="legend-dot green"></div>Выполнено</div>
+        <div class="legend-item"><div class="legend-dot yellow"></div>В работе</div>
+        <div class="legend-item"><div class="legend-dot red"></div>Не выполнено</div>
+        <div class="legend-item"><div class="legend-dot blue"></div>Мусоровоз</div>
+      </div>
+      <div class="vehicle-panel" id="vehicle-panel">
+        <h4>🚛 Техника</h4>
+        <div id="vehicle-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Orders -->
+  <div class="tab-content" id="tab-disp-orders">
+    <div class="content-area" id="disp-orders-list">
+      <div class="empty-state"><div class="empty-icon">📋</div><p>Загрузка...</p></div>
+    </div>
+  </div>
+
+  <!-- Tab: Create Order -->
+  <div class="tab-content" id="tab-disp-create">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>➕ Новый наряд-задание</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Дата выполнения</label>
+              <input type="date" id="order-date">
+            </div>
+            <div class="form-group">
+              <label>Район</label>
+              <select id="order-district">
+                <option value="">— Выберите район —</option>
+                <option>Северный</option>
+                <option>Центральный</option>
+                <option>Южный</option>
+                <option>Западный</option>
+                <option>Восточный</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Водитель</label>
+              <select id="order-driver">
+                <option value="">— Выберите водителя —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Транспортное средство</label>
+              <select id="order-vehicle">
+                <option value="">— Выберите ТС —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Контейнерные площадки (маршрут)</label>
+            <div class="site-checkbox-list" id="site-checkbox-list"></div>
+          </div>
+          <div class="form-group">
+            <label>Примечания</label>
+            <textarea id="order-notes" placeholder="Дополнительные указания для водителя..."></textarea>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn btn-outline" onclick="App.resetOrderForm()">Очистить</button>
+            <button class="btn btn-primary" id="btn-create-order">Создать наряд</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Violations -->
+  <div class="tab-content" id="tab-disp-violations">
+    <div class="content-area" id="violations-list">
+      <div class="empty-state"><div class="empty-icon">✅</div><p>Нарушений не зафиксировано</p></div>
+    </div>
+  </div>
+
+  <!-- Tab: GPS Diagnostics -->
+  <div class="tab-content" id="tab-disp-gps">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+          <h3>📡 Мониторинг GPS-связи</h3>
+          <span id="gps-diag-updated" style="font-size:11px;color:var(--text-muted)">обновляется...</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <!-- Legend -->
+          <div style="display:flex;gap:16px;padding:10px 16px;background:var(--bg-secondary);font-size:11px;border-bottom:1px solid var(--border-color);flex-wrap:wrap">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#43A047;margin-right:4px;vertical-align:middle"></span>Онлайн (< 5с)</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#FB8C00;margin-right:4px;vertical-align:middle"></span>Недавно (5–30с)</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#E53935;margin-right:4px;vertical-align:middle"></span>Нет связи (> 30с)</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9E9E9E;margin-right:4px;vertical-align:middle"></span>Нет данных</span>
+          </div>
+          <!-- GPS table -->
+          <div id="gps-diag-table" style="overflow-x:auto">
+            <div class="empty-state"><div class="empty-icon">📡</div><p>Загрузка...</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GPS event log -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+          <h3>📜 Лог GPS событий</h3>
+          <button class="btn btn-outline" style="font-size:11px;padding:4px 10px" onclick="App.clearGpsLog()">Очистить</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div id="gps-event-log" style="max-height:220px;overflow-y:auto;font-size:12px;font-family:monospace">
+            <div style="padding:12px;color:var(--text-muted);text-align:center">Ожидание событий GPS...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MANAGER ═══════════════════ -->
+<div id="screen-manager" class="screen">
+  <header class="app-header">
+    <span class="header-logo">📊</span>
+    <div style="flex:1">
+      <h2>Панель руководителя</h2>
+      <div class="header-sub">Система мониторинга · г. Рудный</div>
+    </div>
+    <div class="header-user">
+      <div class="avatar" id="manager-avatar">Р</div>
+      <span class="user-name" id="manager-username">Руководитель</span>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="mgr-stats" data-screen="manager">
+      <span class="tab-icon">📊</span>Статистика
+    </button>
+    <button class="tab-btn" data-tab="mgr-map" data-screen="manager">
+      <span class="tab-icon">🗺️</span>Карта
+    </button>
+    <button class="tab-btn" data-tab="mgr-kpi" data-screen="manager">
+      <span class="tab-icon">🏆</span>KPI
+    </button>
+    <button class="tab-btn" data-tab="mgr-report" data-screen="manager">
+      <span class="tab-icon">📑</span>Отчёт
+    </button>
+    <button class="tab-btn" data-tab="mgr-logout" data-screen="manager">
+      <span class="tab-icon">🚪</span>Выход
+    </button>
+  </nav>
+
+  <!-- Tab: Stats -->
+  <div class="tab-content active" id="tab-mgr-stats">
+    <div class="content-area">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="chart-card">
+        <h3>📈 Обслуженных площадок за неделю</h3>
+        <div class="chart-wrap"><canvas id="chart-week"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>🥧 Выполнение нарядов сегодня</h3>
+        <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Map (read-only) -->
+  <div class="tab-content" id="tab-mgr-map">
+    <div class="map-wrap" style="flex:1">
+      <div id="manager-map" style="height:100%;min-height:calc(100vh - 180px)"></div>
+    </div>
+  </div>
+
+  <!-- Tab: KPI -->
+  <div class="tab-content" id="tab-mgr-kpi">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>🏆 KPI водителей — сегодня</h3></div>
+        <div class="table-wrap">
+          <table id="kpi-table">
+            <thead><tr><th>Водитель</th><th>ТС</th><th>Наряд</th><th>Выполнено</th><th>Пропущено</th><th>Фото</th><th>Нарушений</th><th>Результат</th></tr></thead>
+            <tbody id="kpi-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Report -->
+  <div class="tab-content" id="tab-mgr-report">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header">
+          <h3>📑 Суточный отчёт</h3>
+          <div style="display:flex;gap:8px">
+            <input type="date" id="report-date" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px">
+            <button class="btn btn-primary btn-sm" onclick="App.generateReport()">Сформировать</button>
+          </div>
+        </div>
+        <div class="card-body" id="report-content">
+          <div class="empty-state"><div class="empty-icon">📑</div><p>Выберите дату и нажмите «Сформировать»</p></div>
+        </div>
+        <div class="card-header" style="border-top:1px solid var(--border);border-bottom:none;justify-content:flex-end">
+          <button class="btn btn-outline btn-sm" onclick="App.printReport()">🖨️ Печать</button>
+          <button class="btn btn-outline btn-sm" onclick="App.exportCSV()">📊 CSV</button>
+          <button class="btn btn-success btn-sm" onclick="App.exportExcel()">📗 Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODAL: Order detail ═══════════════════ -->
+<div class="modal-overlay" id="modal-order">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-order-title">Наряд #—</h3>
+      <button class="btn-icon" onclick="App.closeModal('modal-order')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-order-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="App.closeModal('modal-order')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODAL: Photo viewer ═══════════════════ -->
+<div class="modal-overlay" id="modal-photo">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="modal-photo-title">Фотоотчёт</h3>
+      <button class="btn-icon" onclick="App.closeModal('modal-photo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="photo-row">
+        <div style="flex:1;text-align:center">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px">ДО</div>
+          <img id="modal-photo-before" src="" style="width:100%;border-radius:8px;display:none">
+          <div id="modal-photo-before-empty" style="padding:20px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted)">Нет фото</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px">ПОСЛЕ</div>
+          <img id="modal-photo-after" src="" style="width:100%;border-radius:8px;display:none">
+          <div id="modal-photo-after-empty" style="padding:20px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-muted)">Нет фото</div>
+        </div>
+      </div>
+      <div id="modal-photo-meta" style="margin-top:12px;font-size:12px;color:var(--text-muted)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="App.closeModal('modal-photo')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ADMIN PANEL ═══════════════════ -->
+<div id="screen-admin" class="screen">
+  <header class="app-header">
+    <span class="header-logo">⚙️</span>
+    <div style="flex:1">
+      <h2>Панель управления</h2>
+      <div class="header-sub">Система мониторинга · г. Рудный</div>
+    </div>
+    <div class="header-user">
+      <div class="avatar" id="admin-avatar">А</div>
+      <span class="user-name" id="admin-username"></span>
+    </div>
+  </header>
+  <nav class="tab-nav" style="overflow-x:auto">
+    <button class="tab-btn active" data-tab="admin-personnel" data-screen="admin"><span class="tab-icon">👥</span>Персонал</button>
+    <button class="tab-btn" data-tab="admin-vehicles" data-screen="admin"><span class="tab-icon">🚛</span>Техника</button>
+    <button class="tab-btn" data-tab="admin-sites" data-screen="admin"><span class="tab-icon">📍</span>Маршруты</button>
+    <button class="tab-btn" data-tab="admin-orders" data-screen="admin"><span class="tab-icon">📋</span>Наряды</button>
+    <button class="tab-btn" data-tab="admin-roles" data-screen="admin"><span class="tab-icon">🎭</span>Роли</button>
+    <button class="tab-btn" data-tab="admin-status" data-screen="admin"><span class="tab-icon">🔄</span>Статусы</button>
+    <button class="tab-btn" data-tab="admin-back" data-screen="admin" id="admin-back-btn" style="display:none"><span class="tab-icon">🏠</span>Назад</button>
+    <button class="tab-btn" data-tab="admin-logout" data-screen="admin"><span class="tab-icon">🚪</span>Выход</button>
+  </nav>
+
+  <!-- Персонал -->
+  <div class="tab-content active" id="tab-admin-personnel">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>👥 Персонал</h3><button class="btn btn-primary btn-sm" onclick="App.adminAddUser()">+ Добавить</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Имя</th><th>Логин</th><th>Роль</th><th>ТС</th><th></th></tr></thead><tbody id="admin-personnel-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Техника -->
+  <div class="tab-content" id="tab-admin-vehicles">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>🚛 Техника</h3><button class="btn btn-primary btn-sm" onclick="App.adminAddVehicle()">+ Добавить</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Номер</th><th>Модель</th><th>Водитель</th><th>Статус</th><th></th></tr></thead><tbody id="admin-vehicles-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Маршруты -->
+  <div class="tab-content" id="tab-admin-sites">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>📍 Контейнерные площадки</h3><button class="btn btn-primary btn-sm" onclick="App.adminAddSite()">+ Добавить</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Название</th><th>Район</th><th>Адрес</th><th>Радиус</th><th></th></tr></thead><tbody id="admin-sites-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Наряды -->
+  <div class="tab-content" id="tab-admin-orders">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>📋 Все наряды</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>№</th><th>Дата</th><th>Район</th><th>Водитель</th><th>ТС</th><th>Выполн.</th><th>Статус</th><th></th></tr></thead><tbody id="admin-orders-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Роли -->
+  <div class="tab-content" id="tab-admin-roles">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>🎭 Управление ролями</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>Сотрудник</th><th>Логин</th><th>Текущая роль</th><th>Изменить роль</th></tr></thead><tbody id="admin-roles-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Статусы -->
+  <div class="tab-content" id="tab-admin-status">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>🔄 Статусы нарядов</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>Наряд</th><th>Дата</th><th>Водитель</th><th>Статус</th><th>Изменить</th></tr></thead><tbody id="admin-status-tbody"></tbody></table></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3>🔄 Статусы визитов</h3></div>
+        <div class="card-body">
+          <div class="form-group"><label>Выберите наряд</label>
+            <select id="admin-visit-order-sel" onchange="App.renderAdminVisitStatuses()"><option value="">— Выберите наряд —</option></select>
+          </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Площадка</th><th>Статус</th><th>Изменить</th></tr></thead><tbody id="admin-visits-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Admin Form -->
+<div class="modal-overlay" id="modal-admin-form">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="admin-form-title">Редактирование</h3>
+      <button class="btn-icon" onclick="App.closeModal('modal-admin-form')">✕</button>
+    </div>
+    <div class="modal-body" id="admin-form-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="App.closeModal('modal-admin-form')">Отмена</button>
+      <button class="btn btn-primary btn-sm" onclick="App.adminFormSave()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Fix: willReadFrequently warning from leaflet-heat
+(function(){var o=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(t,a){return o.call(this,t,t==='2d'?Object.assign({willReadFrequently:true},a):a);};})();
+</script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="data.js"></script>
+<script src="supabase-sync.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
