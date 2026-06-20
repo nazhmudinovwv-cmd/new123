@@ -939,6 +939,14 @@ const App = (() => {
 
     const driverSel = document.getElementById('order-driver');
     const vehicleSel = document.getElementById('order-vehicle');
+    const districtSel = document.getElementById('order-district');
+    while (districtSel.options.length > 1) districtSel.remove(1);
+    Data.getDistricts().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      districtSel.appendChild(opt);
+    });
     Data.getDrivers().forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id;
@@ -1273,7 +1281,7 @@ const App = (() => {
     if (backBtn) backBtn.style.display = user.role === 'dispatcher' ? '' : 'none';
     showScreen('admin');
     renderAdminPersonnel(); renderAdminVehicles(); renderAdminSites();
-    renderAdminOrders(); renderAdminRoles(); renderAdminStatuses();
+    renderAdminOrders(); renderAdminRoles(); renderAdminStatuses(); renderAdminDistricts();
   }
 
   function renderAdminPersonnel() {
@@ -1418,8 +1426,56 @@ const App = (() => {
     Data.deleteSite(id); toast('Удалено', 'warning'); renderAdminSites();
   }
 
+  function renderAdminDistricts() {
+    document.getElementById('admin-districts-tbody').innerHTML = Data.getDistricts().map(name => `<tr>
+      <td><b>${name}</b></td><td>${Data.districtUsage(name)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-outline btn-sm" onclick="App.adminEditDistrict('${name}')">✏️</button>
+        <button class="btn btn-sm" style="background:#E53935;color:#fff;margin-left:4px" onclick="App.adminDeleteDistrict('${name}')">🗑️</button>
+      </td></tr>`).join('');
+  }
+
+  function adminAddDistrict() {
+    _openAdminForm('+ Добавить район', _districtFormHtml(), () => {
+      const d = _readDistrictForm(); if (!d) return;
+      if (Data.getDistricts().includes(d.name)) { toast('Такой район уже есть', 'warning'); return; }
+      Data.addDistrict(d.name);
+      toast('✅ Район добавлен', 'success');
+      closeModal('modal-admin-form'); renderAdminDistricts();
+    });
+  }
+
+  function adminEditDistrict(name) {
+    _openAdminForm('✏️ Переименовать район', _districtFormHtml(name), () => {
+      const d = _readDistrictForm(); if (!d) return;
+      if (d.name !== name && Data.getDistricts().includes(d.name)) { toast('Такой район уже есть', 'warning'); return; }
+      Data.renameDistrict(name, d.name);
+      toast('✅ Сохранено', 'success');
+      closeModal('modal-admin-form'); renderAdminDistricts(); renderAdminSites();
+    });
+  }
+
+  function adminDeleteDistrict(name) {
+    const count = Data.districtUsage(name);
+    const msg = count
+      ? `Удалить "${name}"? В нём ${count} площадок(-и) — они останутся, но без района из списка.`
+      : `Удалить "${name}"?`;
+    if (!confirm(msg)) return;
+    Data.deleteDistrict(name); toast('Удалено', 'warning'); renderAdminDistricts();
+  }
+
+  function _districtFormHtml(name = '') {
+    return `<div class="form-group"><label>Название района</label><input id="df-name" value="${name}" placeholder="Например: Промзона"></div>`;
+  }
+
+  function _readDistrictForm() {
+    const name = document.getElementById('df-name').value.trim();
+    if (!name) { toast('Введите название района', 'warning'); return null; }
+    return { name };
+  }
+
   function _siteFormHtml(s = {}) {
-    const dists = ['Северный','Центральный','Южный','Западный','Восточный'];
+    const dists = Data.getDistricts();
     return `<div class="form-group"><label>Название</label><input id="sf-name" value="${s.name||''}" placeholder="мкр. Северный, д.5"></div>
       <div class="form-group"><label>Адрес</label><input id="sf-addr" value="${s.address||''}" placeholder="Полный адрес"></div>
       <div class="form-row">
@@ -1687,6 +1743,7 @@ const App = (() => {
     adminAddUser, adminEditUser, adminDeleteUser,
     adminAddVehicle, adminEditVehicle, adminDeleteVehicle,
     adminAddSite, adminEditSite, adminDeleteSite,
+    adminAddDistrict, adminEditDistrict, adminDeleteDistrict,
     adminDeleteOrder, adminChangeRole, adminChangeOrderStatus,
     adminChangeVisitStatus, renderAdminVisitStatuses, adminFormSave,
     clearGpsLog

@@ -7,6 +7,7 @@ const DB_KEYS = {
   ORDERS: 'tbo_orders',
   VISITS: 'tbo_visits',
   VIOLATIONS: 'tbo_violations',
+  DISTRICTS: 'tbo_districts',
   SESSION: 'tbo_session'
 };
 
@@ -93,12 +94,15 @@ function seedDatabase() {
     { id: 'viol3', orderId: 'o1', siteId: 's2', type: 'no_photo', description: 'Площадка посещена, но фотоотчёт отсутствует', timestamp: new Date(Date.now() - 1800000).toISOString(), driverId: 'u3' }
   ];
 
+  const districts = ['Северный', 'Центральный', 'Южный', 'Западный', 'Восточный'];
+
   localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
   localStorage.setItem(DB_KEYS.VEHICLES, JSON.stringify(vehicles));
   localStorage.setItem(DB_KEYS.SITES, JSON.stringify(sites));
   localStorage.setItem(DB_KEYS.ORDERS, JSON.stringify(orders));
   localStorage.setItem(DB_KEYS.VISITS, JSON.stringify(visits));
   localStorage.setItem(DB_KEYS.VIOLATIONS, JSON.stringify(violations));
+  localStorage.setItem(DB_KEYS.DISTRICTS, JSON.stringify(districts));
 }
 
 const Data = {
@@ -110,6 +114,11 @@ const Data = {
       if (!users.find(u => u.role === 'admin')) {
         users.push({ id: 'u0', name: 'Администратор', role: 'admin', username: 'admin', password: 'admin' });
         this._set(DB_KEYS.USERS, users);
+      }
+      if (!localStorage.getItem(DB_KEYS.DISTRICTS)) {
+        const fromSites = [...new Set(this._get(DB_KEYS.SITES).map(s => s.district).filter(Boolean))];
+        const defaults = ['Северный', 'Центральный', 'Южный', 'Западный', 'Восточный'];
+        this._set(DB_KEYS.DISTRICTS, [...new Set([...defaults, ...fromSites])]);
       }
     }
   },
@@ -148,6 +157,27 @@ const Data = {
   // Sites
   getSites() { return this._get(DB_KEYS.SITES); },
   getSiteById(id) { return this._get(DB_KEYS.SITES).find(s => s.id === id); },
+
+  // Districts
+  getDistricts() { return this._get(DB_KEYS.DISTRICTS); },
+  addDistrict(name) {
+    const list = this._get(DB_KEYS.DISTRICTS);
+    if (!list.includes(name)) { list.push(name); this._set(DB_KEYS.DISTRICTS, list); }
+  },
+  renameDistrict(oldName, newName) {
+    const list = this._get(DB_KEYS.DISTRICTS).map(d => d === oldName ? newName : d);
+    this._set(DB_KEYS.DISTRICTS, list);
+    const sites = this._get(DB_KEYS.SITES).map(s => s.district === oldName ? { ...s, district: newName } : s);
+    this._set(DB_KEYS.SITES, sites);
+    const orders = this._get(DB_KEYS.ORDERS).map(o => o.district === oldName ? { ...o, district: newName } : o);
+    this._set(DB_KEYS.ORDERS, orders);
+  },
+  deleteDistrict(name) {
+    this._set(DB_KEYS.DISTRICTS, this._get(DB_KEYS.DISTRICTS).filter(d => d !== name));
+  },
+  districtUsage(name) {
+    return this._get(DB_KEYS.SITES).filter(s => s.district === name).length;
+  },
 
   // Orders
   getOrders() { return this._get(DB_KEYS.ORDERS); },

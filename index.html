@@ -35,10 +35,10 @@
       <table>
         <tr><td>Администратор:</td><td>admin / admin</td></tr>
         <tr><td>Диспетчер:</td><td>dispatcher / 1234</td></tr>
-        <tr><td>Руководитель:</td><td>andrew / 1234</td></tr>
-        <tr><td>Водитель 1:</td><td>aset / 1234</td></tr>
-        <tr><td>Водитель 2:</td><td>vlad / 1234</td></tr>
-        <tr><td>Водитель 3:</td><td>ramazan / 1234</td></tr>
+        <tr><td>Руководитель:</td><td>manager / 1234</td></tr>
+        <tr><td>Водитель 1:</td><td>driver1 / 1234</td></tr>
+        <tr><td>Водитель 2:</td><td>driver2 / 1234</td></tr>
+        <tr><td>Водитель 3:</td><td>driver3 / 1234</td></tr>
       </table>
     </div>
   </div>
@@ -222,11 +222,6 @@
               <label>Район</label>
               <select id="order-district">
                 <option value="">— Выберите район —</option>
-                <option>Северный</option>
-                <option>Центральный</option>
-                <option>Южный</option>
-                <option>Западный</option>
-                <option>Восточный</option>
               </select>
             </div>
           </div>
@@ -459,6 +454,7 @@
     <button class="tab-btn active" data-tab="admin-personnel" data-screen="admin"><span class="tab-icon">👥</span>Персонал</button>
     <button class="tab-btn" data-tab="admin-vehicles" data-screen="admin"><span class="tab-icon">🚛</span>Техника</button>
     <button class="tab-btn" data-tab="admin-sites" data-screen="admin"><span class="tab-icon">📍</span>Маршруты</button>
+    <button class="tab-btn" data-tab="admin-districts" data-screen="admin"><span class="tab-icon">🗺️</span>Районы</button>
     <button class="tab-btn" data-tab="admin-orders" data-screen="admin"><span class="tab-icon">📋</span>Наряды</button>
     <button class="tab-btn" data-tab="admin-roles" data-screen="admin"><span class="tab-icon">🎭</span>Роли</button>
     <button class="tab-btn" data-tab="admin-status" data-screen="admin"><span class="tab-icon">🔄</span>Статусы</button>
@@ -492,6 +488,16 @@
       <div class="card">
         <div class="card-header"><h3>📍 Контейнерные площадки</h3><button class="btn btn-primary btn-sm" onclick="App.adminAddSite()">+ Добавить</button></div>
         <div class="table-wrap"><table><thead><tr><th>Название</th><th>Район</th><th>Адрес</th><th>Радиус</th><th></th></tr></thead><tbody id="admin-sites-tbody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Районы -->
+  <div class="tab-content" id="tab-admin-districts">
+    <div class="content-area">
+      <div class="card">
+        <div class="card-header"><h3>🗺️ Районы</h3><button class="btn btn-primary btn-sm" onclick="App.adminAddDistrict()">+ Добавить</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Название</th><th>Площадок</th><th></th></tr></thead><tbody id="admin-districts-tbody"></tbody></table></div>
       </div>
     </div>
   </div>
